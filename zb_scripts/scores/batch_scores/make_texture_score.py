@@ -1,0 +1,305 @@
+from google import genai
+from google.genai import types
+import os
+
+from PIL import Image
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/mmu-vcg/zb08/mmu-ketu-eff898205d01.json'
+
+
+# 这里计划写一个多进程的 打分judge 脚本  
+# 打分我计划 分成2 部分  这里的编辑的 指令跟随程度和美观度的综合打分 、 用线条和 mask 做一致性的打分  或者再看看之前的文章 
+
+
+import re
+from typing import Optional, Dict
+
+def parse_eval_output(text: str) -> Dict[str, Optional[str]]:
+    """
+    Robustly parse <think> justification and <answer> score from model output.
+
+    Returns:
+        {
+            "reason": str or None,
+            "score": float or None,
+            "raw": original text
+        }
+    """
+    result = {
+        "reason": None,
+        "score": None,
+        "raw": text
+    }
+
+    if not text or not isinstance(text, str):
+        return result
+
+    # -------- 1. 解析 think --------
+    think_pattern = re.compile(
+        r"<\s*think\s*>(.*?)<\s*/\s*think\s*>",
+        re.IGNORECASE | re.DOTALL
+    )
+    think_match = think_pattern.search(text)
+    if think_match:
+        reason = think_match.group(1).strip()
+        # 压缩多余空白
+        reason = re.sub(r"\s+", " ", reason)
+        result["reason"] = reason if reason else None
+
+    # -------- 2. 解析 answer --------
+    answer_pattern = re.compile(
+        r"<\s*answer\s*>(.*?)<\s*/\s*answer\s*>",
+        re.IGNORECASE | re.DOTALL
+    )
+    answer_match = answer_pattern.search(text)
+
+    score_text = None
+    if answer_match:
+        score_text = answer_match.group(1).strip()
+
+    # -------- 3. 从 answer 中提取数值 --------
+    if score_text:
+        # 支持：8 / 8.5 / 8/10 / score: 8
+        num_match = re.search(
+            r"(\d+(\.\d+)?)",
+            score_text
+        )
+        if num_match:
+            score = float(num_match.group(1))
+            if 0 <= score <= 10:
+                result["score"] = score
+
+    # -------- 4. 兜底：全文找分数 --------
+    if result["score"] is None:
+        fallback_match = re.search(
+            r"(score|rating)?\s*[:=]?\s*(\d+(\.\d+)?)\s*/?\s*10?",
+            text,
+            re.IGNORECASE
+        )
+        if fallback_match:
+            score = float(fallback_match.group(2))
+            if 0 <= score <= 10:
+                result["score"] = score
+
+    return result
+
+
+import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+from PIL import Image
+import torch
+import numpy as np
+
+import json
+from pycocotools.coco import COCO
+from tqdm import tqdm
+# from openai import OpenAI
+
+# from modelscope import AutoModelForCausalLM, AutoTokenizer
+# from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+
+import random
+
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate image editing commands using Qwen3-VL model.")
+
+    # 新增参数
+    # parser.add_argument('--gpu', type=int, default=0, help='指定运行的GPU设备ID (e.g., 0, 1, 2).')
+    parser.add_argument('--num_splits', type=int, default=4, help='将数据集切分的总块数.')
+    parser.add_argument('--split_index', type=int, default=0, help='当前程序处理的是第几块数据 (从 0 开始).')
+
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    results = []
+
+    # dst_foldr1 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/rl_resume_72_dpm20_texture_g3'
+    # dst_foldr2 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/g3_texture_g3'
+    # dst_foldr3 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/g25_texture_g3'
+    # dst_foldr4 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/2509_dpm20_texture_g3'
+    # dst_foldr5 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/sftour_dpm20_texture_g3'
+    # dst_foldr6 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/2511_dpm20_texture_g3'
+
+    # dst_foldr1 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/g2.5_simple_blender_texture'
+    # dst_foldr2 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/g3_simple_blender_texture'
+    # dst_foldr3 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/2509_orig_simple_blender_texture'
+
+    dst_foldr1 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/rl_pure_gemini_dpm20_texture'
+    dst_foldr2 = '/mmu-vcg/zb08/outputs/texture_edit/final_old_scores_final/rl_pure_edge_dpm20_texture'
+
+
+    os.makedirs(dst_foldr1, exist_ok=True)
+    os.makedirs(dst_foldr2, exist_ok=True)
+    # os.makedirs(dst_foldr3, exist_ok=True)
+
+    # 输入图像与指令都是一样的
+    # in_p = '/mmu-vcg/zb08/outputs/texture_edit/train_data/simple_blender_test/texture_index.jsonl'
+    in_p = '/mmu-vcg/zb08/outputs/texture_edit/train_data/rl_data/maybe_v2_final_texture/test_clean_v2.jsonl'
+
+    dst_img_p1 = '/mmu-vcg/zb08/outputs/texture_edit/sft_base/2026.01.23_11.18_0_eval_pure_gemini_texture/edited'
+    dst_img_p2 = '/mmu-vcg/zb08/outputs/texture_edit/sft_base/2026.01.23_14.09_0_eval_pure_edge_texture/edited'
+    # dst_img_p3 = '/mmu-vcg/zb08/outputs/texture_edit/sft_base/2026.01.22_11.01_0_eval_origin_texture_index_simple/edited'
+    
+    # dst_foldr_list = [  dst_foldr2, dst_foldr3, dst_foldr4, dst_foldr5, dst_foldr6]
+    # dst_img_p_list = [  dst_img_p2, dst_img_p3, dst_img_p4, dst_img_p5, dst_img_p6]
+    dst_foldr_list = [ dst_foldr1, dst_foldr2]
+    dst_img_p_list = [ dst_img_p1, dst_img_p2]
+    # dst_img_p_list = [ dst_img_p1, dst_img_p2, dst_img_p3]
+
+
+    with open(in_p, "r", encoding="utf-8") as f:
+        in_data = [json.loads(line) for line in f]
+
+
+    cur_id = args.split_index
+    total_id = args.num_splits
+
+
+    PROJECT_ID = "mmu-ketu"
+    LOCATION = "global"
+
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
+
+    # 数据分片 
+    n = len(in_data)
+    chunk_size = (n + total_id - 1) // total_id  # 向上取整
+    sub_data = in_data[cur_id*chunk_size : (cur_id+1)*chunk_size]
+
+    for dst_foldr, dst_img_p in zip(dst_foldr_list, dst_img_p_list):
+        results = []
+        print(dst_foldr)
+        print(dst_img_p)
+        # === 2. 遍历每张图像 ===
+        for item in tqdm(sub_data):  # 
+
+
+            img_path = item['edit_image']
+            # id = item['index']
+            img_name = os.path.basename(img_path)
+
+            d_img_path = os.path.join(dst_img_p, img_name)
+            # d_img_path = os.path.join(dst_img_p, str(id)+'.png')
+
+            if (not os.path.exists(img_path)) or (not os.path.exists(d_img_path)):
+                print(f"❌ Image not found: {d_img_path}")
+                continue
+
+            ins = item['prompt']
+            # cat = item['category'] 
+
+            with open(img_path, 'rb') as f:
+                simg_bytes = f.read()
+            with open(d_img_path, 'rb') as f:
+                dimg_bytes = f.read()
+
+            # 补充原图 和 目标图 
+
+            # === 3. 构造提示 ===
+            prompt = f"""
+            You are given an editing instruction, a source image, and an edited image.
+
+            Your task is to strictly evaluate whether the texture editing instruction is followed.
+            Assume the instruction is NOT correctly followed unless there is clear visual evidence.
+
+            Scoring criteria:
+
+            9-10:
+            Near-perfect texture editing. Texture matches the instruction precisely,
+            with consistent spatial distribution, preserved fine details,
+            and no artifacts, leakage, structural change, or added objects.
+
+            7-8:
+            Instruction largely followed. Texture change is correct in intent,
+            but shows minor issues such as slight inconsistency, mild over-smoothing,
+            or small local artifacts. No new objects or structural changes.
+
+            4-6:
+            Partial or ambiguous compliance. Noticeable texture errors, loss of detail,
+            imprecise alignment with the instruction, or visible side effects.
+            No hard constraint violation, but quality is clearly degraded.
+
+            1-3:
+            Major failure. Severe texture mismatch, instruction mostly ignored,
+            or clear structural or semantic errors.
+            May include unintended structural changes but no fully distinct new objects.
+
+            0-2 (Hard Violation Override):
+            Any unintended new object or semantic entity is introduced.
+            This is considered a severe violation regardless of texture quality.
+
+            First, provide a concise justification in no more than 25 words.
+            Then, assign a score from 0 to 10.
+
+            Wrap the justification with <think></think> and the score with <answer></answer>.
+            """ 
+            all_list = []
+            for i in range(3):
+                try:
+
+                    response = client.models.generate_content(
+                    model='gemini-3-flash-preview',
+                    # model='gemini-2.5-flash',
+                    contents=[
+                        'origin image:',
+                        types.Part.from_bytes(
+                        data=simg_bytes,
+                        mime_type='image/jpeg',
+                        ),
+                        'edited image:',
+                        types.Part.from_bytes(
+                        data=dimg_bytes,
+                        mime_type='image/jpeg',
+                        ),
+                        'editing instruction:',
+                        ins,
+                        prompt
+                    ]
+                    )
+
+                    print(response.text)
+                    o1 = parse_eval_output(response.text)
+                    all_list.append(o1['score'])
+                    break
+                except Exception as e:
+                    print(f"❌ Error during instruction follow-up evaluation (attempt {i+1}/3): {e}")
+                    sleep_time = random.uniform(1.0, 2.0)
+                    import time
+                    time.sleep(sleep_time)
+
+            prompt2 = f"""
+            You will be given a source image and an edited image.
+            Your task is to evaluate the visual quality of the edited image.
+            First, provide a concise justification in no more than 25 words.
+            Then, assign a score from 0 to 10 reflecting overall aesthetics and consistency.
+            Wrap the justification with <think></think> and the score with <answer></answer>.
+            """ 
+
+            try:
+                means = sum(all_list)/len(all_list)
+            except:
+                means = all_list[0]
+            results.append({
+                "origin_p": img_path,
+                "edited_p": d_img_path,
+                "instruction": ins,
+                "follow_instruction_score": means,
+                # "follow_instruction_reason": o1["reason"],
+                # "visual_quality_score": o2["score"],
+                # "visual_quality_reason": o2["reason"],
+            })
+
+
+            sleep_time = random.uniform(1.0, 2.0)
+            import time
+            time.sleep(sleep_time)
+
+        dst_p = os.path.join(dst_foldr, f"final_part{cur_id}.json")
+
+        # === 4. 保存结果 ===
+        with open(dst_p, "w") as f:
+            json.dump(results, f, indent=2)
+
+        print(f"✅ Finished! Saved to {dst_p}")
