@@ -28,9 +28,7 @@ def get_config():
     # containing checkpoints, in which case the latest one will be used. `config.use_lora` must be set to the same value
     # as the run that generated the saved checkpoint.
     config.resume_from = ""
-    # config.resume_from = "/mmu-vcg/zb08/codes/UniWorld-main/UniWorld-V2/logs/nft/qwen_image_edit/zb_sft_base_bigbs_Coco_normal_kl_allwash_abla_pure_gemini/checkpoints_2026.01.22_10.00.44/checkpoint-28"
-    # config.resume_from = "/mmu-vcg/zb08/codes/UniWorld-main/UniWorld-V2/logs/nft/qwen_image_edit/zb_sft_base_bigbs_Coco_normal_kl_allwash_resume_112/checkpoints_2026.01.12_06.34.12/checkpoint-24"
-    # config.resume_from = "/mmu-vcg/zb08/codes/UniWorld-main/UniWorld-V2/logs/nft/qwen_image_edit/zb_sft_base_bigbs_Coco_normal_kl_all/checkpoints+unique_id/checkpoint-16"
+
     # whether or not to use LoRA.
     config.use_lora = True
     config.dataset = ""

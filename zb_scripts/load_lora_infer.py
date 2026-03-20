@@ -365,9 +365,9 @@ def main(_):
 
     ### load sft lora base !!!!
     print("Loading LoRA SFT model ")
-    # dit_state = torch.load("/mmu-vcg/zb08/outputs/texture_edit/lora_merged_model_v2best/transformer/dit_merged.pth")
+    dit_state = torch.load("/mmu-vcg/zb08/outputs/texture_edit/lora_merged_model_v2best/transformer/dit_merged.pth")
     # 纯复现alchemist
-    dit_state = torch.load("/mmu-vcg/zb08/outputs/texture_edit/alchemist_zb/dit_merged.pth")
+    # dit_state = torch.load("/mmu-vcg/zb08/outputs/texture_edit/alchemist_zb/dit_merged.pth")
     pipeline.transformer.load_state_dict(dit_state)
 
     pipeline.vae.requires_grad_(False)
@@ -412,9 +412,7 @@ def main(_):
         torch.backends.cudnn.allow_tf32 = True
 
     # --- Datasets and Dataloaders ---
-    # train_dataset = PromptImageDataset(
-    #     config.dataset, config.resolution, "test"
-    # )
+
     # test_dataset = PromptImageDataset(config.dataset, config.resolution, "val")
     test_dataset = PromptImageDataset(config.dataset, config.resolution, "test_clean_v2")
     # test_dataset = PromptImageDataset(config.dataset, config.resolution, "val")

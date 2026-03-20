@@ -172,8 +172,6 @@ def gemini_score_api(device=None):
 
     import torch
     from PIL import Image
-    # import google.generativeai as genai
-    # from google.generativeai import types
 
     # =========================
     # Utils
@@ -212,13 +210,6 @@ def gemini_score_api(device=None):
         client,
         max_retry=4,
     ):
-        # system_prompt = (
-        #     "You are given an editing instruction, a source image, and an edited image.\n"
-        #     "Your task is to evaluate how well the editing instruction has been followed. Additionally, modifying content beyond what is explicitly requested by the instruction is not encouraged. \n"
-        #     "First, provide a concise justification in no more than 25 words.\n"
-        #     "Then, assign a score from 0 to 5 reflecting the completion quality.\n"
-        #     "Wrap the justification with <think></think> and the score with <answer></answer>."
-        # )
 
         system_prompt = f"""
         You are given an editing instruction, a source image, and an edited image.

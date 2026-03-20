@@ -225,9 +225,6 @@ def eval_fn(
     device , local_rank = get_local_device()
     print("eval device:", device, local_rank)
 
-    # if config.train.ema and ema is not None:
-    #     ema.copy_ema_to(transformer_trainable_parameters, store_temp=True)
-
     pipeline.transformer.eval()
     all_rewards = defaultdict(list)
 

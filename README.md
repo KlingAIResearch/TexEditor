@@ -1,103 +1,290 @@
-<p align="center">
-    <img src="https://s21.ax1x.com/2025/06/03/pVCBdw8.png" width="200"/>
-<p>
+
 <h2 align="center"> 
-  <a href="https://arxiv.org/abs/2510.16888">
-    UniWorld-V2: Reinforce Image Editing with Diffusion Negative-Aware Finetuning and
-MLLM Implicit Feedback
+  <a href="https://arxiv.org/abs/2603.18488">
+TexEditor: Structure-Preserving Text-Driven Texture Editing
   </a>
 </h2>
 
-[![UniWorld-V2](https://img.shields.io/badge/Arxiv-UniWorldV2-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2510.16888)
-[![UniWorld-V1](https://img.shields.io/badge/Arxiv-UniWorldV1-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2506.03147)
-[![ImgEdit](https://img.shields.io/badge/Arxiv-ImgEdit-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2506.03147)
-[![Collection](https://img.shields.io/badge/🤗-Collection-blue.svg)](https://huggingface.co/collections/chestnutlzj/edit-r1-68dc3ecce74f5d37314d59f4)
-[![License](https://img.shields.io/badge/License-Apache-yellow)](https://github.com/PKU-YuanGroup/UniWorld-V2/blob/main/LICENSE)
 
 ## 📣 News
 
-**[2025/10/19]**: We release **Edit-R1**, which employs [DiffusionNFT](https://github.com/NVlabs/DiffusionNFT) and a training-free reward
-model derived from pretrained MLLMs to fine-tune diffusion models for image editing. [UniWorld-Qwen-Image-Edit-2509](https://huggingface.co/collections/chestnutlzj/edit-r1-68dc3ecce74f5d37314d59f4) and [UniWorld-FLUX.1-Kontext-Dev](https://huggingface.co/collections/chestnutlzj/edit-r1-68dc3ecce74f5d37314d59f4) are open-sourced.
+**[2026/03/21]**: We release **TexEditor**, a dedicated texture editing model based on Qwen-Image-Edit-2509.
 
-## 🎨 Case Comparisons
 
-| Original | Prompt | Nano-banana | GPT-4o | Qwen-Image-Edit | **UniWorld-V2 (Ours)** |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| <img src="imgs/0-0.jpg" width="400"> | **Case 1:** `把鸟移动到红框里，删除掉现在的鸟，最后移除红框` | <img src="imgs/0-1.webp" width="400"> | <img src="imgs/0-2.webp" width="400"> | <img src="imgs/0-3.webp" width="400"> | <img src="imgs/0-4.webp" width="400"> （✅正确执行指令）|
-| <img src="imgs/1-0.jpg" width="400"> | **Case 2:** `把中间白色衣服戴口罩女生的手势改成OK` | <img src="imgs/1-1.webp" width="400"> | <img src="imgs/1-2.webp" width="400"> | <img src="imgs/1-3.webp" width="400"> | <img src="imgs/1-4.webp" width="400">  （✅OK手势 ）|
-| <img src="imgs/2-0.jpg" width="400"> | **Case 3:** `提取画面中的吉他` | <img src="imgs/2-1.webp" width="400"> | <img src="imgs/2-2.webp" width="400"> | <img src="imgs/2-3.webp" width="400"> | <img src="imgs/2-4.webp" width="400">（✅弦钮上二下三 ） |
-| <img src="imgs/3-0.png" width="400"> | **Case 4:** `把下面的所有文字并改用书法体。中间的“月满中秋”改成“千里团圆”。并且把月亮改成模糊的月饼。` | <img src="imgs/3-1.webp" width="400"> | <img src="imgs/3-2.webp" width="400"> | <img src="imgs/3-3.webp" width="400"> | <img src="imgs/3-4.webp" width="400"> （✅模糊月饼，✅书法字体）|
-| <img src="imgs/4-0.jpg" width="400"> | **Case 5:** `让画面中的形象坐在高档西餐厅，双手拿刀叉吃牛排` | <img src="imgs/4-1.webp" width="400"> | <img src="imgs/4-2.webp" width="400"> | <img src="imgs/4-3.webp" width="400"> | <img src="imgs/4-4.webp" width="400"> （✅人物特征，✅刀叉）|
+## Data and model
+
+You can find RL training data and TexBench here:
+[https://www.modelscope.cn/datasets/zhaohhh2000/TexBench]
+
+
+You can find SFT merged Dit, RL lora and Struture server model (SAUGE) here:
+[https://www.modelscope.cn/models/zhaohhh2000/TexEditor]
+
+More detail about SAUGE:
+[https://github.com/Star-xing1/SAUGE]
+
+
+## Env
+We recommend to consturct envionment for model training and blender rendering respectively.
+
+### Model training
+
+For SFT, we use DiffSynth-Studio for quick lora learing.[https://github.com/modelscope/DiffSynth-Studio]
+
+For RL learning env:
+
+```
+conda env create -f environment_rl.yml
+```
+
+Download the SAUGE (wireframe detector) model weights from our released model directory in advance and place them in a directory of your choice.
+
+### Blender
+
+```
+conda create -n yh_tex python=3.11
+pip install blenderproc
+git clone https://github.com/DLR-RM/BlenderProc
+cd BlenderProc
+pip install -e .
+pip install transformers
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+pip install accelerate
+pip install flash-attn --no-build-isolation
+pip install opencv-python
+git clone https://github.com/facebookresearch/sam3
+cd sam3
+pip install -e .
+pip install pycocotools
+```
+
+
 
 ## 🗝️ Train
+For the SFT stage of model training, we do not provide detailed descriptions; please refer to the LoRA training section of Qwen-Edit in DiffSynth-Studio. We now focus on the training pipeline of the RL stage.
 
-### Deploy vLLM Reward Server
 
-Start the reward server:
+### Deploy Reward Server
 
+For Instruction score：
 ```
-python reward_server/reward_server.py
-```
-
-If you want to check the status of the reward server, you can test it by running:
-
-```
-python reward_server/test_reward_server.py
+You need to modify the Gemini API configuration in the gemini_score_api function of UniWorld-V2/flow_grpo/reward_edge_loss.py and enter your own account credentials.
 ```
 
-### Data Format
+For Structure score：
+```
+First， check below model path：
+ckpt_p = '/mmu-vcg/zb08/yihang/2026_works/SAUGE/model/sam_vit_b_01ec64.pth'
+sam = sam_model_registry['vit_b'](checkpoint=ckpt_p)
+
+model = Model.SAUGE(None, sam_generator=mask_generator, mode='eval').cuda()
+checkpoint = torch.load('UniWorld-V2/ckpt/bsds/sauge_vitb.pth')['state_dict']
+
+Then launch UniWorld-V2/zb_scripts/edge_server_2.py on different ports to distribute requests for computing structural scores across different GPUs.
+```
+
+
+
+### RL Data 
 
 Directory structure:
 
 ```
 - dataset-dir
   - images/
-     - YOUR_IMAGE_DATA
-     - ...
-  - train_metadata.jsonl
-  - test_metadata.jsonl
+     - new_data_more
+     - new_data_texture
+  - train.jsonl
+  - val.jsonl
 ```
 
-`train_metadata.jsonl` and `test_metadata.jsonl` format:
-
+Data format
 ```
-{"prompt": "PROMPT", "image": "IMAGE_RELATIVE_PATH", "requirement": "TASK_REQUIREMENT"}
+{"prompt": "Make the person's white shirt slightly translucent, like frosted glass, preserving its original color and shape.", "edit_image": "xxx/new_data_more/000000103504.jpg", "kind": "more"}
 ...
 ```
 
 ### Configure Training
 
-See `config/qwen_image_edit_nft.py` and `config/kontext_nft.py` for available configurations.
+See `config/texture_rl.py' for available configurations.
 
 ### Run Training
 
-```shell
-export REWARD_SERVER=[YOUR_REWARD_SERVICE_IP_ADDR]:12341
 
-torchrun --nproc_per_node=8 \
-    scripts/train_nft_qwen_image_edit.py --config config/qwen_image_edit_nft.py:config_name
+Modify the server address settings for the structural loss in flow_grpo/reward_edge_loss.py, making sure the IP addresses and ports are matched correctly.
+```
+URL0 = "http://10.82.121.94:9004/reward" # aiplatform 
+URL1 = "http://10.82.121.94:9002/reward" # aiplatform 
+URL2 = "http://10.82.121.94:9003/reward" # aiplatform 
+URL3 = "http://10.82.121.94:9005/reward" # aiplatform 
+ULR_list = [URL0, URL1, URL2, URL3]
 ```
 
-And you can also refer to the example scripts in `examples/`.
+Training script：
 
-## ⚡️ Reproduction
+```shell
 
-For reproducibility, we provide the reproduction scripts in `reproduction/`.
+torchrun --nproc_per_node=8 \
+    scripts/train_main.py --config config/texture_rl.py:qwen_mllm_reward
+```
 
-See [Reproduction Details](reproduction/README.md) for more details.
+## Inference
+
+Before Inference，you need to set input data path and model path
+
+Check model path
+```
+    ### load sft lora base !!
+    print("Loading LoRA SFT model ")
+    dit_state = torch.load("SFT_merged_ckpt_path")
+    pipeline.transformer.load_state_dict(dit_state)
+
+    # from peft import PeftModel
+    print("Loading LoRA RL model " + "**"*20)
+    lora_path = 'RL_lora_path'
+```
+
+Infer script
+```
+python zb_scripts/single_infer_rl.py  --config config/infer_nft.py:qwen_mllm_reward
+```
+
+## Evaluation
+
+在使用评分脚本前 要注意输入与输出路径的配置 
+```
+dst_foldr = 'score_save_path'
+
+os.makedirs(dst_foldr, exist_ok=True)
+
+# 输入数据json
+in_p = '/mmu-vcg/zb08/outputs/texture_edit/train_data/rl_data/maybe_v2_final_more/test_clean_v2.jsonl'
+
+# 输入的编辑结果图像folder path
+dst_img_p = 'xxx'
+```
+
+Scripts paths
+```
+zb_scripts/open_scores/make_more.py # attribute task / instruction
+
+zb_scripts/open_scores/make_texture.py # texture task / instruction
+
+zb_scripts/open_scores/make_score_edge.py # structure score
+
+zb_scripts/open_scores/make_score_gemini.sh # multiprocess bash for instruction score
+
+zb_scripts/open_scores/make_score_edge.sh # multiprocess bash for instruction score
+
+```
+
+
+## Make Blender Data
+
+
+### Data Pipeline Overview
+
+```
+Blender Rendering  →  Instruction Generation  →  Data Cleaning
+```
+
+---
+
+### Stage 1 — Blender Pipeline
+
+**Goal**: Render 3D-FRONT scenes with Blender to produce image pairs (original texture / replaced texture).
+
+#### Required Datasets
+
+- [3D-FRONT](https://tianchi.aliyun.com/dataset/65347) — 3D furnished indoor scene dataset. Access requires an application.
+- [MatSynth](https://huggingface.co/datasets/gvecchio/MatSynth) — Material texture dataset.
+
+#### Usage
+
+```bash
+python blender_pipeline_code/run_blender.py \
+  --front_path /path/to/3D-FRONT \
+  --output_path ./output \
+  --texture_path /path/to/MatSynth \
+  --blenderproc_path /path/to/BlenderProc \
+  --blender_path /path/to/blender-4.2.1-linux-x64 \
+  --gpus 2 3 4
+```
+
+#### Arguments
+
+| Argument | Description |
+|---|---|
+| `--front_path` | Root directory of the 3D-FRONT dataset |
+| `--output_path` | Output directory for rendered image pairs |
+| `--texture_path` | Root directory of the MatSynth dataset |
+| `--blenderproc_path` | Path to the BlenderProc package |
+| `--blender_path` | Path to the Blender executable directory |
+| `--gpus` | GPU IDs to use. One task is launched per GPU in parallel. |
+
+---
+
+### Stage 2 — Instruction Pipeline
+
+**Goal**: Automatically generate texture-editing instructions for each image pair produced in Stage 1. Output is saved as `all.json`.
+
+#### Usage
+
+```bash
+python blender_pipeline_code/instruction.py \
+  --gpus 2 3 4 \
+  --base_dir ./output \
+  --dest_dir ./results \
+  --log_dir ./logs
+```
+
+#### Arguments
+
+| Argument | Description |
+|---|---|
+| `--gpus` | GPU IDs to use |
+| `--base_dir` | Image pair directory (output from Stage 1) |
+| `--dest_dir` | Output directory for `all.json` |
+| `--log_dir` | Log output directory (optional) |
+
+---
+
+### Stage 3 — Wash Pipeline
+
+**Goal**: Filter and clean the generated instructions using SAM3 and Qwen-VL. Output is saved as `result.json`.
+
+#### Usage
+
+```bash
+python blender_pipeline_code/pipeline.py \
+  --gpu 2 3 \
+  --json_file ./results/all.json \
+  --dest_dir ./results \
+  --qwen_model /path/to/Qwen3-VL-32B-Instruct \
+  --checkpoint_path /path/to/sam3.pt
+```
+
+#### Arguments
+
+| Argument | Description |
+|---|---|
+| `--gpu` | GPU IDs to use |
+| `--json_file` | Path to the JSON file from Stage 2 |
+| `--dest_dir` | Output directory for `result.json` |
+| `--qwen_model` | Path to the Qwen-VL model weights |
+| `--checkpoint_path` | Path to the SAM3 checkpoint. If omitted, downloads automatically from HuggingFace. |
+
+
+<!-- 
 
 ## 👍 Acknowledgement
 
-- [**DiffusionNFT**](https://github.com/NVlabs/DiffusionNFT): Huge thanks for their elegant codebase 🤩!
-- [Flow-GRPO](https://github.com/yifan123/flow_grpo)
-- [ImgEdit](https://github.com/PKU-YuanGroup/ImgEdit)
-- [UniWorld-V1](https://github.com/PKU-YuanGroup/UniWorld-V1)
+- [DiffusionNFT](https://github.com/NVlabs/DiffusionNFT)
+- [UniWorld-V1](https://github.com/PKU-YuanGroup/UniWorld-V1) -->
 
-## 🔒 License
 
-See [LICENSE](LICENSE) for details. The FLUX weights fall under the [FLUX.1 [dev] Non-Commercial License](https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md).
 
-## ✏️ Citation
+<!-- ## ✏️ Citation
 
 ```
 @article{li2025uniworldv2,
@@ -107,17 +294,4 @@ See [LICENSE](LICENSE) for details. The FLUX weights fall under the [FLUX.1 [dev
     year={2025}
 }
 
-@article{lin2025uniworld,
-  title={Uniworld: High-resolution semantic encoders for unified visual understanding and generation},
-  author={Lin, Bin and Li, Zongjian and Cheng, Xinhua and Niu, Yuwei and Ye, Yang and He, Xianyi and Yuan, Shenghai and Yu, Wangbo and Wang, Shaodong and Ge, Yunyang and others},
-  journal={arXiv preprint arXiv:2506.03147},
-  year={2025}
-}
-
-@article{ye2025imgedit,
-  title={Imgedit: A unified image editing dataset and benchmark},
-  author={Ye, Yang and He, Xianyi and Li, Zongjian and Lin, Bin and Yuan, Shenghai and Yan, Zhiyuan and Hou, Bohan and Yuan, Li},
-  journal={arXiv preprint arXiv:2505.20275},
-  year={2025}
-}
-```
+``` -->

@@ -144,9 +144,6 @@ if __name__ == "__main__":
 
     with open(in_p, "r", encoding="utf-8") as f:
         in_data = [json.loads(line) for line in f]
-    # in_data = json.load(open(in_p, "r", encoding="utf-8"))
-    # in_data = in_data[:200]
-    #对in_data 分片
 
     cur_id = args.split_index
     total_id = args.num_splits

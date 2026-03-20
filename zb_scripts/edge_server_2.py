@@ -31,10 +31,7 @@ from torchvision import transforms
 
 
 import random
-# import  SamAutomaticMaskGenerator, SamAutomaticMaskGeneratorForTest
-# from build_sam import sam_model_registry
-# from automatic_mask_generator import SamAutomaticMaskGenerator
-# from automatic_mask_generator_fortest import SamAutomaticMaskGeneratorForTest
+
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamAutomaticMaskGeneratorForTest
 
 import base64
