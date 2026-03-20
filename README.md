@@ -151,7 +151,7 @@ python zb_scripts/single_infer_rl.py  --config config/infer_nft.py:qwen_mllm_rew
 
 ## Evaluation
 
-在使用评分脚本前 要注意输入与输出路径的配置 
+Before using the scoring script, ensure that the input and output paths are properly configured.
 ```
 dst_foldr = 'score_save_path'
 
