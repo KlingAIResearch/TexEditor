@@ -8,6 +8,7 @@ TexEditor: Structure-Preserving Text-Driven Texture Editing
 
 ## 📣 News
 
+**[2026/05/01]**: **TexEditor** has been accepted in ICML 2026 [https://icml.cc/virtual/2026/poster/61988].
 **[2026/03/21]**: We release **TexEditor**, a dedicated texture editing model based on Qwen-Image-Edit-2509.
 
 
